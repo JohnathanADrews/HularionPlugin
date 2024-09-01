@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33815.320
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HularionPlugin", "HularionPlugin\HularionPlugin.csproj", "{0E2A7D47-93DF-4F24-88B8-D1E32EDAEC70}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HularionPlugin.FileSystem", "HularionPlugin.FileSystem\HularionPlugin.FileSystem.csproj", "{A644A728-58F4-4633-8A69-847336DC687C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HularionPlugin.PluginMeta", "HularionPlugin.PluginMeta\HularionPlugin.PluginMeta.csproj", "{8EB8972B-B6A7-47C4-806F-BB15B8C5EBAA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HularionPlugin.RouteRegistrar", "HularionPlugin.RouteRegistrar\HularionPlugin.RouteRegistrar.csproj", "{A6A52766-9B08-4211-B774-313162A01350}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0E2A7D47-93DF-4F24-88B8-D1E32EDAEC70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E2A7D47-93DF-4F24-88B8-D1E32EDAEC70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E2A7D47-93DF-4F24-88B8-D1E32EDAEC70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E2A7D47-93DF-4F24-88B8-D1E32EDAEC70}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A644A728-58F4-4633-8A69-847336DC687C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A644A728-58F4-4633-8A69-847336DC687C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A644A728-58F4-4633-8A69-847336DC687C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A644A728-58F4-4633-8A69-847336DC687C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8EB8972B-B6A7-47C4-806F-BB15B8C5EBAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8EB8972B-B6A7-47C4-806F-BB15B8C5EBAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8EB8972B-B6A7-47C4-806F-BB15B8C5EBAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8EB8972B-B6A7-47C4-806F-BB15B8C5EBAA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6A52766-9B08-4211-B774-313162A01350}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6A52766-9B08-4211-B774-313162A01350}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6A52766-9B08-4211-B774-313162A01350}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6A52766-9B08-4211-B774-313162A01350}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {89F5CDC1-2F82-4AA3-8CFC-BE720BA45548}
+	EndGlobalSection
+EndGlobal
