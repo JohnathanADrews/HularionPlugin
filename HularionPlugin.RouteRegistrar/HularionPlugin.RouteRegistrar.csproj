@@ -18,7 +18,7 @@
     <RepositoryUrl>https://github.com/JohnathanADrews/HularionPlugin</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>hularion</PackageTags>
-    <Version>3.0.0</Version>
+    <Version>3.0.1</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
