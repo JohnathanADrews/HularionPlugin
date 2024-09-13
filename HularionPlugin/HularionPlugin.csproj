@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationIcon>HularionIcon.ico</ApplicationIcon>
@@ -18,7 +18,7 @@
     <RepositoryUrl>https://github.com/JohnathanADrews/HularionPlugin</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>hularion</PackageTags>
-    <Version>1.0.1</Version>
+    <Version>3.0.0</Version>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
   </PropertyGroup>
@@ -45,9 +45,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HularionCore\HularionCore.csproj" />
-    <ProjectReference Include="..\HularionText.Language.Json\HularionText.Language.Json.csproj" />
-    <ProjectReference Include="..\HularionText\HularionText.csproj" />
+    <PackageReference Include="HularionText.Language.Json" Version="3.0.0" />
   </ItemGroup>
 
   <ItemGroup>
