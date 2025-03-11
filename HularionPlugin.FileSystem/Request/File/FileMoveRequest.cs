@@ -21,12 +21,9 @@ namespace HularionPlugin.FileSystem.Request.File
 {
     public class FileMoveRequest
     {
-        public string Directory { get; set; }
+        public List<FileMoveOperation> Moves { get; set; } = new List<FileMoveOperation>();
 
-        public string[] Files { get { return files.ToArray(); } set { files = value == null ? new List<string>() : Files.ToList(); } }
+        public bool CreateDirectories { get; set; } = false;
 
-        public string File { get { return files.Count() == 0 ? null : files.FirstOrDefault(); } set { files = new List<string>() { value }; } }
-
-        private List<string> files { get; set; } = new List<string>();
     }
 }

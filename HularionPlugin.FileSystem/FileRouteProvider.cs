@@ -13,6 +13,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #endregion
 
 using HularionCore.Pattern.Functional;
+using HularionCore.Pattern.Topology;
 using HularionPlugin.FileSystem.Request;
 using HularionPlugin.FileSystem.Request.Directory;
 using HularionPlugin.FileSystem.Request.File;
@@ -25,10 +26,13 @@ using HularionPlugin.Route;
 using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Reflection;
 using System.Text;
 
 namespace HularionPlugin.FileSystem
@@ -114,6 +118,7 @@ namespace HularionPlugin.FileSystem
 
         private void AddDirectoryRoutes(List<HularionRoute> routes)
         {
+            // {0}/allAttributes
             routes.Add(new HularionRoute<DirectoryAllAttributeRequest, DirectoryAllAttributeResponse>
             {
                 Route = MakeDirectoryRoute("allAttributes"),
@@ -129,6 +134,7 @@ namespace HularionPlugin.FileSystem
                 })
             });
 
+            // {0}/attributes
             routes.Add(new HularionRoute<DirectoryAttributeRequest, DirectoryAllAttributeResponse>
             {
                 Route = MakeDirectoryRoute("attributes"),
@@ -164,20 +170,67 @@ namespace HularionPlugin.FileSystem
                 })
             });
 
+            // {0}/copy
             routes.Add(new HularionRoute<DirectoryCopyRequest, DirectoryCopyResponse>
             {
                 Route = MakeDirectoryRoute("copy"),
                 Name = "Copy Directory",
                 Method = "CopyDirectory",
-                Usage = "Copies one or more directories from one location to another.",
+                Usage = "Copies one or more directories from one location to another, including all contents.\n"
+                        + "May result in an incomplete copy if an error occurs.",
                 Handler = ParameterizedFacade.FromSingle<RoutedRequest<DirectoryCopyRequest>, RoutedResponse<DirectoryCopyResponse>>(request => 
                 {
                     var response = new RoutedResponse<DirectoryCopyResponse>();
+                    try
+                    {
+                        if (String.IsNullOrWhiteSpace(request.Detail.SourceDirectory) || !request.Detail.SourceDirectory.Contains(@"\"))
+                        {
+                            response.SetAsFailure(request.CreateErrorMessage(header: "Invalid Source Directory"));
+                            return response;
+                        }
+                        if (String.IsNullOrWhiteSpace(request.Detail.SourceDirectory) || !request.Detail.SourceDirectory.Contains(@"\"))
+                        {
+                            response.SetAsFailure(request.CreateErrorMessage(header: "Invalid Destination Directory"));
+                            return response;
+                        }
+
+                        var directoryName = request.Detail.SourceDirectory.Substring(request.Detail.SourceDirectory.LastIndexOf('\\') + 1);
+                        var destination = String.Format(@"{0}\{1}", request.Detail.DestinationPath.Trim().Trim('\\'), directoryName);
+                        if(Directory.Exists(destination))
+                        {
+                            response.SetAsFailure(request.CreateErrorMessage(header: "Destination Exists Already"));
+                            return response;
+                        }
+
+                        Directory.CreateDirectory(destination);
+
+                        var traverser = new TreeTraverser<string>();
+                        var plan = traverser.CreateEvaluationPlan(TreeTraversalOrder.ParentRightLeft, request.Detail.SourceDirectory, node =>
+                        {
+                            return Directory.GetDirectories(node);
+                        }, true);
+                        foreach (var directory in plan)
+                        {
+                            var files = Directory.GetFiles(directory);
+                            var newDirectory = String.Format(@"{0}\{1}", destination, directory.Substring(request.Detail.SourceDirectory.Length).Trim().Trim('\\'));
+                            Directory.CreateDirectory(newDirectory);
+                            foreach (var file in files)
+                            {
+                                File.Copy(file, String.Format(@"{0}\{1}", newDirectory, file.Substring(file.LastIndexOf(@"\") + 1)));
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        response.SetAsFailure(request.CreateErrorMessage(header: "Exception", message: ex.ToString()));
+                        return response;
+                    }
                     response.SetAsFailure(request.CreateErrorMessage(header: "Not Implemented - DirectoryCopyRequest"));
                     return response;
                 })
             });
 
+            // {0}/create
             routes.Add(new HularionRoute<DirectoryCreateRequest, DirectoryCreateResponse>
             {
                 Route = MakeDirectoryRoute("create"),
@@ -187,39 +240,87 @@ namespace HularionPlugin.FileSystem
                 Handler = ParameterizedFacade.FromSingle<RoutedRequest<DirectoryCreateRequest>, RoutedResponse<DirectoryCreateResponse>>(request =>
                 {
                     var response = new RoutedResponse<DirectoryCreateResponse>();
-                    response.SetAsFailure(request.CreateErrorMessage(header: "Not Implemented - DirectoryCopyRequest"));
+                    try
+                    {
+                        Directory.CreateDirectory(request.Detail.Directory);
+                    }
+                    catch (Exception ex)
+                    {
+                        response.SetAsFailure(request.CreateErrorMessage(header: "Exception", message: ex.ToString()));
+                        return response;
+                    }
                     return response;
                 })
             });
 
+            //Directory => {0}/delete
             routes.Add(new HularionRoute<DirectoryDeleteRequest, DirectoryDeleteResponse>
             {
                 Route = MakeDirectoryRoute("delete"),
                 Name = "Delete Directory",
                 Method = "DeleteDirectory",
-                Usage = "",
+                Usage = "Deleted the specified Directory if it is empty.\n"
+                        + "Recursively deletes contents if DeleteContents == true, which may result in only a partial delete if one file or directory cannot be deleted.",
                 Handler = ParameterizedFacade.FromSingle<RoutedRequest<DirectoryDeleteRequest>, RoutedResponse<DirectoryDeleteResponse>>(request =>
                 {
                     var response = new RoutedResponse<DirectoryDeleteResponse>();
-                    response.SetAsFailure(request.CreateErrorMessage(header: "Not Implemented - DirectoryCopyRequest"));
+                    try
+                    {
+                        if (request.Detail.DeleteContents)
+                        {
+                            var traverser = new TreeTraverser<string>();
+                            var plan = traverser.CreateEvaluationPlan(TreeTraversalOrder.LeftRightParent, request.Detail.Directory, node =>
+                            {
+                                return Directory.GetDirectories(node);
+                            }, true);
+                            foreach(var directory in plan)
+                            {
+                                var files = Directory.GetFiles(directory);
+                                foreach(var file in files)
+                                {
+                                    File.Delete(file);
+                                }
+                                Directory.Delete(directory);
+                            }
+                        }
+                        else
+                        {
+                            Directory.Delete(request.Detail.Directory);
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        response.SetAsFailure(request.CreateErrorMessage(header: "Exception", message:ex.ToString()));
+                        return response;
+                    }
                     return response;
                 })
             });
 
+            //Directory => {0}/move
             routes.Add(new HularionRoute<DirectoryMoveRequest, DirectoryMoveResponse>
             {
                 Route = MakeDirectoryRoute("move"),
                 Name = "Move Directory",
                 Method = "MoveDirectory",
-                Usage = "",
+                Usage = "Moves a Directory and its contents to the DestinationDirectory.",
                 Handler = ParameterizedFacade.FromSingle<RoutedRequest<DirectoryMoveRequest>, RoutedResponse<DirectoryMoveResponse>>(request =>
                 {
                     var response = new RoutedResponse<DirectoryMoveResponse>();
-                    response.SetAsFailure(request.CreateErrorMessage(header: "Not Implemented - DirectoryCopyRequest"));
+                    try
+                    {
+                        Directory.Move(request.Detail.Directory, request.Detail.DestinationDirectory);
+                    }
+                    catch(Exception ex)
+                    {
+                        response.SetAsFailure(request.CreateErrorMessage(header: "Exception", message:ex.ToString()));
+                    }
+                    response.SetAsSuccess();
                     return response;
                 })
             });
 
+            //Directory => {0}/read
             routes.Add(new HularionRoute<DirectoryReadRequest, DirectoryReadResponse>
             {
                 Route = MakeDirectoryRoute("read"),
@@ -253,6 +354,7 @@ namespace HularionPlugin.FileSystem
                 })
             });
 
+            //Base => {0}/drives
             routes.Add(new HularionRoute<DrivesRequest, DrivesResponse>
             {
                 Route = MakeBaseRoute("drives"),
@@ -272,6 +374,7 @@ namespace HularionPlugin.FileSystem
 
         private void AddFileRoutes(List<HularionRoute> routes)
         {
+            //File => {0}/allAttributes
             routes.Add(new HularionRoute<FileAllAttributeRequest, FileAllAttributeResponse>
             {
                 Route = MakeFileRoute("allAttributes"),
@@ -287,6 +390,7 @@ namespace HularionPlugin.FileSystem
                 })
             });
 
+            //File => {0}/attributes
             routes.Add(new HularionRoute<FileAttributeRequest, FileAttributeResponse>
             {
                 Route = MakeFileRoute("attributes"),
@@ -322,72 +426,253 @@ namespace HularionPlugin.FileSystem
                 })
             });
 
+            //File => {0}/copy
             routes.Add(new HularionRoute<FileCopyRequest, FileCopyResponse>
             {
                 Route = MakeFileRoute("copy"),
                 Name = "Copy File",
                 Method = "CopyFile",
-                Usage = "",
+                Usage = "Add a list of copies (e.g. copies : [ {from:'s1', to:'d1'}, {from:'s2', to:'d2'},...]. \n"
+                    + "All files that can be copied will be copied.\n"
+                    + "By default, new directories will not be added. set CreateDirectories = true to create necessary directories.",
                 Handler = ParameterizedFacade.FromSingle<RoutedRequest<FileCopyRequest>, RoutedResponse<FileCopyResponse>>(request =>
                 {
                     var response = new RoutedResponse<FileCopyResponse>();
-                    response.SetAsFailure(request.CreateErrorMessage(header: "Not Implemented - DirectoryCopyRequest"));
+
+                    foreach (var copy in request.Detail.Copies)
+                    {
+                        if (String.IsNullOrWhiteSpace(copy.From) || !copy.From.Contains(@"\"))
+                        {
+                            response.Detail.Failures.Add(new FileCopyOperationFailure() { Copy = copy, Message = "Invalid Source Filename" });
+                        }
+                        if (String.IsNullOrWhiteSpace(copy.To) || !copy.To.Contains(@"\"))
+                        {
+                            response.Detail.Failures.Add(new FileCopyOperationFailure() { Copy = copy, Message = "Invalid Destination Filename" });
+                        }
+
+                        var toDirectory = copy.To.Substring(0, copy.To.LastIndexOf(@"\"));
+
+                        if (!File.Exists(copy.From))
+                        {
+                            response.Detail.Failures.Add(new FileCopyOperationFailure() { Copy = copy, Message = "From File Does Not Exist" });
+                            continue;
+                        }
+
+                        if (!request.Detail.CreateDirectories && !Directory.Exists(toDirectory))
+                        {
+                            if (!Directory.Exists(toDirectory))
+                            {
+                                response.Detail.Failures.Add(new FileCopyOperationFailure() { Copy = copy, Message = "To Directory Does Not Exist and CreateDirectories == false" });
+                                continue;
+                            }
+                        }
+
+                        try
+                        {
+                            if (request.Detail.CreateDirectories && !Directory.Exists(toDirectory))
+                            {
+                                Directory.CreateDirectory(toDirectory);
+                            }
+                            File.Move(copy.From, copy.To);
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Detail.Failures.Add(new FileCopyOperationFailure() { Copy = copy, Message = ex.ToString() });
+                        }
+
+                        response.Detail.Successes.Add(copy);
+                    }
                     return response;
                 })
             });
 
-            routes.Add(new HularionRoute<FileCreateRequest, FileCreateResponse>
-            {
-                Route = MakeFileRoute("create"),
-                Name = "Create File",
-                Method = "CreateFile",
-                Usage = "",
-                Handler = ParameterizedFacade.FromSingle<RoutedRequest<FileCreateRequest>, RoutedResponse<FileCreateResponse>>(request =>
-                {
-                    var response = new RoutedResponse<FileCreateResponse>();
-                    response.SetAsFailure(request.CreateErrorMessage(header: "Not Implemented - DirectoryCopyRequest"));
-                    return response;
-                })
-            });
-
+            //File => {0}/delete
             routes.Add(new HularionRoute<FileDeleteRequest, FileDeleteResponse>
             {
                 Route = MakeFileRoute("delete"),
                 Name = "Delete File",
                 Method = "DeleteFile",
-                Usage = "",
+                Usage = "Deletes files specified in Filenames.",
                 Handler = ParameterizedFacade.FromSingle<RoutedRequest<FileDeleteRequest>, RoutedResponse<FileDeleteResponse>>(request =>
                 {
                     var response = new RoutedResponse<FileDeleteResponse>();
+
+                    foreach(var filename in request.Detail.Filenames)
+                    {
+
+                        if (String.IsNullOrWhiteSpace(filename) || !File.Exists(filename))
+                        {
+                            response.Detail.Errors.Add(new FileDeleteError() { Filename = filename, Message="File Does Not Exist" });
+                        }
+
+                        try
+                        {
+                            File.Delete(filename);
+                        }
+                        catch(Exception ex)
+                        {
+                            response.Detail.Errors.Add(new FileDeleteError() { Filename = filename, Message = ex.ToString() });
+                        }
+                        response.Detail.Successes.Add(filename);
+
+                    }
+
                     response.SetAsFailure(request.CreateErrorMessage(header: "Not Implemented - DirectoryCopyRequest"));
                     return response;
                 })
             });
 
+            //File => {0}/move
             routes.Add(new HularionRoute<FileMoveRequest, FileMoveResponse>
             {
                 Route = MakeFileRoute("move"),
-                Name = "Move File",
-                Method = "MoveFile",
-                Usage = "",
+                Name = "Move Files",
+                Method = "MoveFiles",
+                Usage = "Add a list of moves (e.g. moves : [ {from:'s1', to:'d1'}, {from:'s2', to:'d2'},...]. \n"
+                    + "All files that can be moved will be moved.\n"
+                    + "By default, new directories will not be added. set CreateDirectories = true to create necessary directories.",
                 Handler = ParameterizedFacade.FromSingle<RoutedRequest<FileMoveRequest>, RoutedResponse<FileMoveResponse>>(request =>
                 {
                     var response = new RoutedResponse<FileMoveResponse>();
-                    response.SetAsFailure(request.CreateErrorMessage(header: "Not Implemented - DirectoryCopyRequest"));
+
+                    foreach(var move in request.Detail.Moves)
+                    {
+                        if (String.IsNullOrWhiteSpace(move.From) || !move.From.Contains(@"\"))
+                        {
+                            response.Detail.Failures.Add(new FileMoveOperationFailure() { Move = move, Message = "Invalid Source Filename" });
+                        }
+                        if (String.IsNullOrWhiteSpace(move.To) || !move.To.Contains(@"\"))
+                        {
+                            response.Detail.Failures.Add(new FileMoveOperationFailure() { Move = move, Message = "Invalid Destination Filename" });
+                        }
+
+                        var toDirectory = move.To.Substring(0, move.To.LastIndexOf(@"\"));
+
+                        if (!File.Exists(move.From))
+                        {
+                            response.Detail.Failures.Add(new FileMoveOperationFailure() { Move = move, Message = "From File Does Not Exist" });
+                            continue;
+                        }
+
+                        if (!request.Detail.CreateDirectories && !Directory.Exists(toDirectory))
+                        {
+                            if (!Directory.Exists(toDirectory))
+                            {
+                                response.Detail.Failures.Add(new FileMoveOperationFailure() { Move = move, Message = "To Directory Does Not Exist and CreateDirectories == false" });
+                                continue;
+                            }
+                        }
+
+                        try
+                        {
+                            if(request.Detail.CreateDirectories && !Directory.Exists(toDirectory))
+                            {
+                                Directory.CreateDirectory(toDirectory);
+                            }
+                            File.Move(move.From, move.To);
+                        }
+                        catch(Exception ex)
+                        {
+                            response.Detail.Failures.Add(new FileMoveOperationFailure() { Move = move, Message = ex.ToString() });
+                        }
+
+                        response.Detail.Successes.Add(move);
+                    }
                     return response;
                 })
             });
 
+            //File => {0}/set
+            routes.Add(new HularionRoute<FileSetRequest, FileSetResponse>
+            {
+                Route = MakeFileRoute("set"),
+                Name = "Set File",
+                Method = "SetFile",
+                Usage = "Updates the files, creating them if necessary along with the containing directories. If Bytes is not null, Bytes are written. Otherwise, Text is written.",
+                Handler = ParameterizedFacade.FromSingle<RoutedRequest<FileSetRequest>, RoutedResponse<FileSetResponse>>(request =>
+                {
+                    var response = new RoutedResponse<FileSetResponse>();
+
+                    foreach(var set in request.Detail.Sets)
+                    {
+                        if (String.IsNullOrWhiteSpace(set.Filename) || !set.Filename.Contains(@"\"))
+                        {
+                            response.Detail.Failures.Add(new FileSetOperationFailure() { Set = set, Message = "Invalid Filename" });
+                        }
+                        var directory = set.Filename.Substring(0, set.Filename.LastIndexOf(@"\"));
+                        try
+                        {
+
+                            if (!Directory.Exists(directory))
+                            {
+                                Directory.CreateDirectory(directory);
+                            }
+                            if (!File.Exists(set.Filename))
+                            {
+                                File.Create(set.Filename);
+                            }
+                            if (set.Bytes != null && set.Bytes.Length > 0)
+                            {
+                                File.WriteAllBytes(set.Filename, set.Bytes);
+                            }
+                            else if(!String.IsNullOrEmpty(set.Text))
+                            {
+                                File.WriteAllText(set.Filename, set.Text);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Detail.Failures.Add(new FileSetOperationFailure() { Set = set, Message =  ex.ToString() });
+                        }
+                        response.Detail.Successes.Add(set.Filename);
+                    }
+                    return response;
+                })
+            });
+
+            //File => {0}/read
             routes.Add(new HularionRoute<FileReadRequest, FileReadResponse>
             {
                 Route = MakeFileRoute("read"),
-                Name = "Read File",
-                Method = "ReadFile",
-                Usage = "",
+                Name = "Read Files",
+                Method = "ReadFiles",
+                Usage = "Reads the specified files: { Reads: [ {Filename: 'f1', ReadBytes: true},  {Filename: 'f2', ReadText: true}, ...]}\n"
+                        + "Reads the whole files and returns either the Bytes array or a Text string.",
                 Handler = ParameterizedFacade.FromSingle<RoutedRequest<FileReadRequest>, RoutedResponse<FileReadResponse>>(request =>
                 {
                     var response = new RoutedResponse<FileReadResponse>();
-                    response.SetAsFailure(request.CreateErrorMessage(header: "Not Implemented - DirectoryCopyRequest"));
+
+                    foreach (var read in request.Detail.Reads)
+                    {
+                        try
+                        {
+                            if (!File.Exists(read.Filename))
+                            {
+                                response.Detail.Failures.Add(new FileReadOperationFailure() { Read = read, Message = "File Does Not Exist" });
+                            }
+                            if ((read.ReadBytes && read.ReadText) || (!read.ReadBytes && !read.ReadText))
+                            {
+                                response.Detail.Failures.Add(new FileReadOperationFailure() { Read = read, Message = "Exactly one of ReadBytes and ReadText must be true." });
+                            }
+                            var result = new FileReadOperationResult();
+                            if (read.ReadBytes)
+                            {
+                                result.Bytes = File.ReadAllBytes(read.Filename);
+                                response.Detail.Successes.Add(result);
+                                continue;
+                            }
+                            if (read.ReadText)
+                            {
+                                result.Text = File.ReadAllText(read.Filename);
+                                response.Detail.Successes.Add(result);
+                                continue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            response.Detail.Failures.Add(new FileReadOperationFailure() { Read = read, Message = ex.ToString() });
+                        }
+                    }
                     return response;
                 })
             });
@@ -396,6 +681,7 @@ namespace HularionPlugin.FileSystem
 
         private void AddSystemRoutes(List<HularionRoute> routes)
         {
+            //System => {0}/openfolder
             routes.Add(new HularionRoute<OpenFolderRequest, OpenFolderResponse>
             {
                 Route = MakeSystemRoute("openfolder"),

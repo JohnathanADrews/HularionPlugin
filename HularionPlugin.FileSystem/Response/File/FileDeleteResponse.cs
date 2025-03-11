@@ -20,5 +20,11 @@ namespace HularionPlugin.FileSystem.Response.File
 {
     public class FileDeleteResponse
     {
+
+        public List<string> Successes { get; set; }
+
+        public List<FileDeleteError> Errors { get; set; }
+
+
     }
 }

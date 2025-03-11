@@ -21,5 +21,8 @@ namespace HularionPlugin.FileSystem.Request.Directory
     public class DirectoryDeleteRequest
     {
         public string Directory { get; set; }
+
+        public bool DeleteContents { get; set; } = false;
+
     }
 }

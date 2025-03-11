@@ -12,6 +12,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 */
 #endregion
 
+using HularionPlugin.FileSystem.Request.File;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -20,5 +21,7 @@ namespace HularionPlugin.FileSystem.Response.File
 {
     public class FileMoveResponse
     {
+        public List<FileMoveOperation> Successes { get; set; } = new List<FileMoveOperation>();
+        public List<FileMoveOperationFailure> Failures { get; set; } = new List<FileMoveOperationFailure>();
     }
 }

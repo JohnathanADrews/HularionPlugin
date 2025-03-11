@@ -21,7 +21,7 @@ namespace HularionPlugin.FileSystem.Request.Directory
     public class DirectoryCopyRequest
     {
 
-        public string SourcePath { get; set; }
+        public string SourceDirectory { get; set; }
 
         public string DestinationPath { get; set; }
 

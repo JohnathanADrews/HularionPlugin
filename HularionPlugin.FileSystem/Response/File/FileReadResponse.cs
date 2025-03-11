@@ -20,5 +20,11 @@ namespace HularionPlugin.FileSystem.Response.File
 {
     public class FileReadResponse
     {
+
+        public List<FileReadOperationResult> Successes { get; set; } = new List<FileReadOperationResult>();
+
+        public List<FileReadOperationFailure> Failures {get;set;} = new List<FileReadOperationFailure>();
+
+
     }
 }

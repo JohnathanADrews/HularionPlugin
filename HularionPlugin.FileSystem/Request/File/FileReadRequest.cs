@@ -20,5 +20,8 @@ namespace HularionPlugin.FileSystem.Request.File
 {
     public class FileReadRequest
     {
+
+        public List<FileReadOperation> Reads { get; set; } = new List<FileReadOperation>();
+
     }
 }
