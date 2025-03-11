@@ -593,38 +593,45 @@ namespace HularionPlugin.FileSystem
                 {
                     var response = new RoutedResponse<FileSetResponse>();
 
-                    foreach(var set in request.Detail.Sets)
+                    response.Messages.Add(new RoutedResponseMessage() { Message = System.Text.Json.JsonSerializer.Serialize(request) });
+                    try
                     {
-                        if (String.IsNullOrWhiteSpace(set.Filename) || !set.Filename.Contains(@"\"))
-                        {
-                            response.Detail.Failures.Add(new FileSetOperationFailure() { Set = set, Message = "Invalid Filename" });
-                        }
-                        var directory = set.Filename.Substring(0, set.Filename.LastIndexOf(@"\"));
-                        try
-                        {
 
-                            if (!Directory.Exists(directory))
-                            {
-                                Directory.CreateDirectory(directory);
-                            }
-                            if (!File.Exists(set.Filename))
-                            {
-                                File.Create(set.Filename);
-                            }
-                            if (set.Bytes != null && set.Bytes.Length > 0)
-                            {
-                                File.WriteAllBytes(set.Filename, set.Bytes);
-                            }
-                            else if(!String.IsNullOrEmpty(set.Text))
-                            {
-                                File.WriteAllText(set.Filename, set.Text);
-                            }
-                        }
-                        catch (Exception ex)
+                        foreach (var set in request.Detail.Sets)
                         {
-                            response.Detail.Failures.Add(new FileSetOperationFailure() { Set = set, Message =  ex.ToString() });
+                            if (String.IsNullOrWhiteSpace(set.Filename) || !set.Filename.Contains(@"\"))
+                            {
+                                response.Detail.Failures.Add(new FileSetOperationFailure() { Set = set, Message = "Invalid Filename" });
+                                continue;
+                            }
+                            var directory = set.Filename.Substring(0, set.Filename.LastIndexOf(@"\"));
+                            try
+                            {
+
+                                if (!Directory.Exists(directory))
+                                {
+                                    Directory.CreateDirectory(directory);
+                                }
+                                if (set.Bytes != null && set.Bytes.Length > 0)
+                                {
+                                    File.WriteAllBytes(set.Filename, set.Bytes);
+                                }
+                                else if (!String.IsNullOrEmpty(set.Text))
+                                {
+                                    File.WriteAllText(set.Filename, set.Text);
+                                    return response;
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                response.Detail.Failures.Add(new FileSetOperationFailure() { Set = set, Message = ex.ToString() });
+                            }
+                            response.Detail.Successes.Add(set.Filename);
                         }
-                        response.Detail.Successes.Add(set.Filename);
+                    }
+                    catch(Exception ex)
+                    {
+                        response.SetAsFailure(new RoutedResponseMessage(header: "exception", message: ex.ToString()));
                     }
                     return response;
                 })
@@ -641,6 +648,9 @@ namespace HularionPlugin.FileSystem
                 Handler = ParameterizedFacade.FromSingle<RoutedRequest<FileReadRequest>, RoutedResponse<FileReadResponse>>(request =>
                 {
                     var response = new RoutedResponse<FileReadResponse>();
+
+                    //curious why we need -->
+                    response.Detail = new FileReadResponse();
 
                     foreach (var read in request.Detail.Reads)
                     {
